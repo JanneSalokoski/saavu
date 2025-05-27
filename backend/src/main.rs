@@ -40,7 +40,10 @@ async fn main() {
     let state = AppState { db };
 
     let app = Router::new()
-        .route("/api/events", get(get_events).post(create_event))
+        .route(
+            "/api/events",
+            get(get_events).post(create_event).put(update_event),
+        )
         .route("/api/events/{id}", get(get_event))
         .with_state(state)
         .layer(TraceLayer::new_for_http());
@@ -82,11 +85,16 @@ async fn get_events(State(state): State<AppState>) -> Result<Json<Vec<Event>>, S
     Ok(Json(rows))
 }
 
-async fn update_event(Path(id): Path<String>, State(pool): State<SqlitePool>, name: String) {
+async fn update_event(
+    State(state): State<AppState>,
+    Json(data): Json<Event>,
+) -> Result<StatusCode, StatusCode> {
     sqlx::query("UPDATE events SET name = ? WHERE id = ?")
-        .bind(name)
-        .bind(&id)
-        .execute(&pool)
+        .bind(&data.name)
+        .bind(&data.id)
+        .execute(&state.db)
         .await
-        .unwrap();
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
