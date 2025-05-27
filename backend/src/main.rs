@@ -1,12 +1,12 @@
 use axum::{
     Json, Router,
     extract::{Path, State},
-    routing::{get, post, put},
+    routing::get,
 };
 use dotenvy::dotenv;
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
-use sqlx::{Pool, Row, Sqlite, SqlitePool, sqlite::SqlitePoolOptions};
+use sqlx::{Pool, Row, Sqlite, sqlite::SqlitePoolOptions};
 use std::env;
 use tokio;
 use tower_http::trace::TraceLayer;
