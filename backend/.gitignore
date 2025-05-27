@@ -1,0 +1,4 @@
+.env
+.sqlx/
+database.sqlite*
+target/
