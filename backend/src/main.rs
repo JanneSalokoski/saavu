@@ -1,15 +1,15 @@
 use axum::{
     Json, Router,
     extract::{Path, State},
+    http::StatusCode,
     routing::get,
 };
 use dotenvy::dotenv;
-use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Row, Sqlite, sqlite::SqlitePoolOptions};
 use std::env;
 use tokio;
-use tower_http::trace::TraceLayer;
+use tower_http::{services::ServeDir, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
 
@@ -21,6 +21,11 @@ struct AppState {
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 struct Event {
     id: String,
+    name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+struct CreateEvent {
     name: String,
 }
 
@@ -45,6 +50,9 @@ async fn main() {
             get(get_events).post(create_event).put(update_event),
         )
         .route("/api/events/{id}", get(get_event))
+        // .fallback_service(static_files)
+        // .fallback(fallback)
+        .nest_service("/app", ServeDir::new("../static"))
         .with_state(state)
         .layer(TraceLayer::new_for_http());
 
@@ -52,16 +60,21 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn create_event(State(state): State<AppState>, name: String) -> Json<Event> {
+async fn create_event(State(state): State<AppState>, Json(data): Json<CreateEvent>) -> Json<Event> {
     let id = Uuid::new_v4().to_string();
     sqlx::query("INSERT INTO events (id, name) VALUES (?, ?)")
         .bind(&id)
-        .bind(&name)
+        .bind(&data.name)
         .execute(&state.db)
         .await
         .unwrap();
 
-    Json(Event { id, name })
+    // to-do: add location headers
+
+    Json(Event {
+        id: id,
+        name: data.name,
+    })
 }
 
 async fn get_event(Path(id): Path<String>, State(state): State<AppState>) -> Json<Event> {
