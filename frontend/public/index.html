@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Saavu.fi</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      max-width: 600px;
+      margin: auto;
+    }
+    input, button {
+      margin-top: 1rem;
+      padding: 0.5rem;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Saavu.fi</h1>
+  <div id="elm"></div>
+  <script src="app/main.js"></script>
+  <script>
+    var app = Elm.Main.init({
+      node: document.getElementById('elm')
+    });
+  </script>
+</body>
+</html>
+
