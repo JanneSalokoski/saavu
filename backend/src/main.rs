@@ -2,7 +2,6 @@ use axum::{
     Json, Router,
     extract::{Path, State},
     http::StatusCode,
-    response::{Html, IntoResponse},
     routing::get,
 };
 use dotenvy::dotenv;
@@ -10,10 +9,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Row, Sqlite, sqlite::SqlitePoolOptions};
 use std::env;
 use tokio;
-use tower_http::{
-    services::{ServeDir, ServeFile},
-    trace::TraceLayer,
-};
+use tower_http::{services::ServeDir, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
 
@@ -48,17 +44,15 @@ async fn main() {
 
     let state = AppState { db };
 
-    let static_files =
-        ServeDir::new("static").not_found_service(ServeFile::new("static/index.html"));
-
     let app = Router::new()
         .route(
             "/api/events",
             get(get_events).post(create_event).put(update_event),
         )
         .route("/api/events/{id}", get(get_event))
-        .fallback_service(static_files)
-        .fallback(fallback)
+        // .fallback_service(static_files)
+        // .fallback(fallback)
+        .nest_service("/app", ServeDir::new("../static"))
         .with_state(state)
         .layer(TraceLayer::new_for_http());
 
@@ -116,8 +110,4 @@ async fn update_event(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(StatusCode::NO_CONTENT)
-}
-
-async fn fallback() -> impl IntoResponse {
-    Html(include_str!("../../static/index.html"))
 }
