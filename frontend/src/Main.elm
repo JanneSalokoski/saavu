@@ -110,7 +110,7 @@ view : Model -> Html Msg
 view model =
     div []
         [ h2 [] [ text "Events" ]
-        , ul [] (List.map (\e -> li [] [ text e.name ]) model.events)
+        , ul [] (List.map (\e -> li [] [ text e.name ]) (List.sortBy .name model.events))
         , input [ placeholder "Event name", value model.nameInput, onInput UpdateName ] []
         , button [ onClick Submit ] [ text "Create an event" ]
         , case model.error of
