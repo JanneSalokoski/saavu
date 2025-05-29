@@ -1,0 +1,51 @@
+services:
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "8000:80"
+    depends_on:
+      - frontend
+      - backend
+
+  backend:
+    init: true
+    build:
+      context: ./backend
+    command: [
+      "cargo",
+      "watch",
+      "--watch", "src",
+      "--watch", "Cargo.toml",
+      "--ignore", "target",
+      "--ignore", ".git",
+      "-x", "run"
+    ]
+    volumes:
+      - ./backend:/app
+    working_dir: /app
+    ports:
+      - "5000:5000"
+    environment:
+      - RUST_LOG=debug
+
+  frontend:
+    init: true
+    build:
+      context: ./frontend
+    command: [
+      "elm-live", "src/Main.elm",
+      "--dir=public",
+      "--no-open",
+      "--pushstate",
+      "--host=0.0.0.0",
+      "--port=8000",
+      "--",
+      "--output=public/main.js",
+    ]
+    volumes:
+      - ./frontend:/app
+    working_dir: /app
+    ports:
+      - "8003:8000"
