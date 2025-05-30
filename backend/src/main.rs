@@ -42,6 +42,19 @@ struct CreateFeature {
     description: String,
 }
 
+fn ensure_db_file_exists(db_url: &str) {
+    if let Some(path) = db_url.strip_prefix("sqlite:") {
+        let path = std::path::Path::new(path);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).expect("Failed to create database directory")
+        }
+
+        if !path.exists() {
+            std::fs::File::create(path).expect("Failed to create db file");
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
@@ -50,10 +63,21 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let db_url = env::var("DATABASE_URL").unwrap();
-    let db = SqlitePoolOptions::new().connect(&db_url).await.unwrap();
+    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
-    let _ = sqlx::migrate!("./migrations").run(&db).await;
+    ensure_db_file_exists(&db_url);
+
+    // std::thread::sleep(std::time::Duration::from_secs(60 * 10));
+
+    let db = SqlitePoolOptions::new()
+        .connect(&db_url)
+        .await
+        .expect("Failed to connect to db");
+
+    let _ = sqlx::migrate!("./migrations")
+        .run(&db)
+        .await
+        .expect("Failed to run migrations");
 
     let state = AppState { db };
 
