@@ -164,7 +164,7 @@ async fn get_feature(Path(id): Path<String>, State(state): State<AppState>) -> J
 }
 
 async fn get_features(State(state): State<AppState>) -> Result<Json<Vec<Feature>>, StatusCode> {
-    let rows = sqlx::query_as::<_, Feature>("SELECT id, name, description FROM events")
+    let rows = sqlx::query_as::<_, Feature>("SELECT id, name, description FROM features")
         .fetch_all(&state.db)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
