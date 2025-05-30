@@ -13,6 +13,8 @@ RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
     --mount=type=cache,id=cargo-git,target=/usr/local/cargo/git \
     cargo fetch
 
+# RUN cargo fetch
+
 # Stage 2: build app
 
 FROM rust:latest AS builder
@@ -43,6 +45,7 @@ RUN mkdir -p /app/data
 RUN apt-get update \
     && apt-get install -y ca-certificates libsqlite3-0 \
     && rm -rf /var/lib/apt/lists/*
+
 
 EXPOSE 5000
 CMD ["saavu-backend"]
