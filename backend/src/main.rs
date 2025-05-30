@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Row, Sqlite, sqlite::SqlitePoolOptions};
 use std::env;
 use tokio;
+use tokio::signal;
+use tokio::signal::unix::{SignalKind, signal};
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
@@ -97,7 +99,23 @@ async fn main() {
         .layer(TraceLayer::new_for_http());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:5000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    let mut sigterm = signal(SignalKind::terminate()).expect("Failed to install SIGTERM handler");
+
+    let shutdown_signal = async move {
+        tokio::select! {
+            _ = signal::ctrl_c() => {
+                eprintln!("Received SIGINT, shutting down");
+            }
+            _ = sigterm.recv() => {
+                    eprintln!("Received SIGTERM, shutting down");
+                }
+        }
+    };
+
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal)
+        .await
+        .unwrap();
 }
 
 async fn create_event(State(state): State<AppState>, Json(data): Json<CreateEvent>) -> Json<Event> {
