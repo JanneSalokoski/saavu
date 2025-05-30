@@ -29,6 +29,19 @@ struct CreateEvent {
     name: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+struct Feature {
+    id: String,
+    name: String,
+    description: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+struct CreateFeature {
+    name: String,
+    description: String,
+}
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
@@ -50,8 +63,11 @@ async fn main() {
             get(get_events).post(create_event).put(update_event),
         )
         .route("/api/events/{id}", get(get_event))
-        // .fallback_service(static_files)
-        // .fallback(fallback)
+        .route(
+            "/api/features",
+            get(get_features).post(create_feature).put(update_feature),
+        )
+        .route("/api/features/{id}", get(get_feature))
         .nest_service("/app", ServeDir::new("../static"))
         .with_state(state)
         .layer(TraceLayer::new_for_http());
@@ -104,6 +120,65 @@ async fn update_event(
 ) -> Result<StatusCode, StatusCode> {
     sqlx::query("UPDATE events SET name = ? WHERE id = ?")
         .bind(&data.name)
+        .bind(&data.id)
+        .execute(&state.db)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// Features
+
+async fn create_feature(
+    State(state): State<AppState>,
+    Json(data): Json<CreateFeature>,
+) -> Json<Feature> {
+    let id = Uuid::new_v4().to_string();
+    sqlx::query("INSERT INTO features (id, name, description) VALUES (?, ?, ?)")
+        .bind(&id)
+        .bind(&data.name)
+        .bind(&data.description)
+        .execute(&state.db)
+        .await
+        .unwrap();
+
+    // to-do: add location headers
+
+    Json(Feature {
+        id: id,
+        name: data.name,
+        description: data.description,
+    })
+}
+
+async fn get_feature(Path(id): Path<String>, State(state): State<AppState>) -> Json<Feature> {
+    let row =
+        sqlx::query_as::<_, Feature>("SELECT id, name, description FROM features WHERE id = ?")
+            .bind(&id)
+            .fetch_one(&state.db)
+            .await
+            .unwrap();
+
+    Json(row)
+}
+
+async fn get_features(State(state): State<AppState>) -> Result<Json<Vec<Feature>>, StatusCode> {
+    let rows = sqlx::query_as::<_, Feature>("SELECT id, name, description FROM features")
+        .fetch_all(&state.db)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(rows))
+}
+
+async fn update_feature(
+    State(state): State<AppState>,
+    Json(data): Json<Feature>,
+) -> Result<StatusCode, StatusCode> {
+    sqlx::query("UPDATE features SET name = ?, description = ? WHERE id = ?")
+        .bind(&data.name)
+        .bind(&data.description)
         .bind(&data.id)
         .execute(&state.db)
         .await
