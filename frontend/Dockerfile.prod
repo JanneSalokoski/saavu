@@ -1,0 +1,15 @@
+FROM node:latest AS builder
+
+WORKDIR /app
+RUN npm install -g elm
+
+COPY elm.json ./
+COPY src ./src
+COPY public ./public
+
+RUN mkdir -p /dist \
+    && elm make src/Main.elm --output=dist/main.js \
+    && cp public/* dist/
+
+RUN chmod -R a+r /app/dist
+

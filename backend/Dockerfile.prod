@@ -1,0 +1,52 @@
+# Stage 1: fetch and cache dependencies
+
+FROM rust:latest AS planner
+
+WORKDIR /app
+COPY Cargo.toml Cargo.lock ./
+
+# Dummy main
+RUN mkdir src \
+    && echo "fn main() { }" > src/main.rs
+
+RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=cargo-git,target=/usr/local/cargo/git \
+    cargo fetch
+
+# RUN cargo fetch
+
+# Stage 2: build app
+
+FROM rust:latest AS builder
+
+WORKDIR /app
+
+COPY --from=planner /app /app
+
+COPY src            ./src
+COPY migrations     ./migrations
+COPY Cargo.toml     Cargo.lock ./
+
+RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=cargo-git,target=/usr/local/cargo/git \
+    cargo build --release
+
+# Stage 3: runtime
+
+FROM debian:bookworm-slim
+
+WORKDIR /app
+
+COPY --from=builder /app/target/release/saavu-backend /usr/local/bin/saavu-backend
+COPY --from=builder /app/migrations /app/migrations
+
+RUN mkdir -p /app/data
+
+RUN apt-get update \
+    && apt-get install -y ca-certificates libsqlite3-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+
+EXPOSE 5000
+CMD ["saavu-backend"]
+
