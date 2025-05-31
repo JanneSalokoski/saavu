@@ -1,0 +1,28 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+      - feature/vps-action
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx (optional but useful for caching/build)
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build container(s)
+        run: docker compose -f docker-compose.prod.yml build
+
+      - name: Stop old containers
+        run: docker compose -f docker-compose.prod.yml down
+
+      - name: Start new containers
+        run: docker compose -f docker-compose.prod.yml up -d
+
