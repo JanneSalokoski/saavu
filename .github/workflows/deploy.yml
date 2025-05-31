@@ -20,6 +20,9 @@ jobs:
       - name: Build container(s)
         run: docker compose -f docker-compose.prod.yml build
 
+      - name: Restore .env file
+        run: cp /home/saavu/.env backend/.env
+
       - name: Stop old containers
         run: docker compose -f docker-compose.prod.yml down
 
