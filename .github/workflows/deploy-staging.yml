@@ -22,8 +22,8 @@ jobs:
         run: cp /home/saavu/.env backend/.env
 
       - name: Stop old containers
-        run: docker compose -f docker-compose.prod.yml down
+        run: docker compose -f docker-compose.staging.yml down
 
       - name: Start new containers
-        run: docker compose -f docker-compose.prod.yml up -d
+        run: docker compose -f docker-compose.staging.yml up -d
 
