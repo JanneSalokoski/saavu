@@ -12,6 +12,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Set up staging
+        run: |
+          rm -rf /home/saavu/staging
+          mkdir -p /home/saavu/staging
+          cp -r . /home/saavu/staging
+          cd /home/saavu/staging
+
       - name: Set up Docker Buildx (optional but useful for caching/build)
         uses: docker/setup-buildx-action@v3
 
@@ -22,8 +29,8 @@ jobs:
         run: cp /home/saavu/.env backend/.env
 
       - name: Stop old containers
-        run: docker compose -f docker-compose.prod.yml down
+        run: docker compose -f docker-compose.staging.yml down
 
       - name: Start new containers
-        run: docker compose -f docker-compose.prod.yml up -d
+        run: docker compose -f docker-compose.staging.yml up -d
 
