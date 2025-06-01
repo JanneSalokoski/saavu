@@ -1,5 +1,6 @@
 services:
   backend:
+    container_name: saavu-staging-backend
     image: saavu-staging
     build:
       context: ./backend
@@ -9,22 +10,28 @@ services:
     environment:
       - RUST_BACKTRACE=1
     volumes:
-      - db-data:/app/data
+      - staging-db-data:/app/data
+    networks:
+      - staging-saavu-net
     expose:
       - "5000"
     restart: unless-stopped
 
   frontend:
+    container_name: saavu-staging-frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
     depends_on:
       - backend
     volumes:
-      - frontend-dist:/app/dist
+      - staging-frontend-dist:/app/dist
 
   nginx:
+    container_name: saavu-staging-nginx
     image: nginx:alpine
+    networks:
+      - staging-saavu-net
     ports:
       - "8001:80"
     depends_on:
@@ -32,8 +39,12 @@ services:
       - backend
     volumes:
       - ./frontend/nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
-      - frontend-dist:/usr/share/nginx/html:ro
+      - staging-frontend-dist:/usr/share/nginx/html:ro
 
 volumes:
-  db-data:
-  frontend-dist:
+  staging-db-data:
+  staging-frontend-dist:
+
+networks:
+  staging-saavu-net:
+
