@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - staging
-      - fix/vps-action
 
 jobs:
   deploy:
