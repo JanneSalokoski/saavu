@@ -1,66 +1,52 @@
-# syntax=docker/dockerfile:experimental
-############################################
-# Stage 1: “deps” – compile all dependencies only once
-############################################
-FROM rust:latest AS deps
+# Stage 1: fetch and cache dependencies
+
+FROM rust:latest AS planner
 
 WORKDIR /app
-
-# 1) Copy only Cargo.toml and Cargo.lock
 COPY Cargo.toml Cargo.lock ./
 
-# 2) Create a dummy src/main.rs so that `cargo build` actually builds deps
+# Dummy main
 RUN mkdir src \
- && printf 'fn main() { println!("dummy"); }' > src/main.rs
+    && echo "fn main() { }" > src/main.rs
 
-# 3) Use BuildKit cache mounts for registry/git and build just enough to compile dependencies
 RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
     --mount=type=cache,id=cargo-git,target=/usr/local/cargo/git \
-    --mount=type=cache,id=target-deps,target=/app/target \
-    cargo build --release
+    cargo fetch
 
-############################################
-# Stage 2: “builder” – pick up the cached deps, compile your real code
-############################################
+# RUN cargo fetch
+
+# Stage 2: build app
+
 FROM rust:latest AS builder
 
 WORKDIR /app
 
-# 1) Copy the pre‐built /app/target (with all crates already compiled)
-#    and Cargo.lock/Cargo.toml (used for cache keys in the deps stage).
-COPY --from=deps /app/target    ./target
-COPY --from=deps /app/Cargo.toml ./Cargo.toml
-COPY --from=deps /app/Cargo.lock ./Cargo.lock
+COPY --from=planner /app /app
 
-# 2) Copy your real source tree (this invalidates only the
-#    “builder” layer if you change code; deps stay cached).
-COPY src        ./src
-COPY migrations ./migrations
+COPY src            ./src
+COPY migrations     ./migrations
+COPY Cargo.toml     Cargo.lock ./
 
-# 3) Re‐run cargo build with the same cache mounts; because both registry/git
-#    caches and /app/target caches are in place, Cargo will only rebuild changed items.
 RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
     --mount=type=cache,id=cargo-git,target=/usr/local/cargo/git \
-    --mount=type=cache,id=target-deps,target=/app/target \
     cargo build --release
 
-############################################
-# Stage 3: runtime image
-############################################
-FROM debian:bookworm-slim AS runtime
+# Stage 3: runtime
+
+FROM debian:bookworm-slim
 
 WORKDIR /app
 
-# Copy the final binary (with deps statically linked or dynamically, as your build dictates)
 COPY --from=builder /app/target/release/saavu-backend /usr/local/bin/saavu-backend
-COPY --from=builder /app/migrations       /app/migrations
+COPY --from=builder /app/migrations /app/migrations
 
-RUN mkdir -p /app/data \
- && apt-get update \
- && apt-get install -y ca-certificates libsqlite3-0 \
- && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /app/data
+
+RUN apt-get update \
+    && apt-get install -y ca-certificates libsqlite3-0 \
+    && rm -rf /var/lib/apt/lists/*
+
 
 EXPOSE 5000
-
 CMD ["saavu-backend"]
 
