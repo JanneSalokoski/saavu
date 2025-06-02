@@ -4,6 +4,7 @@ import Browser
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Pages.Event
 import Pages.Home
 import Route
 import Url
@@ -26,6 +27,7 @@ type alias Model =
     , url : Url.Url
     , route : Route.Route
     , home : Pages.Home.Model
+    , event : Pages.Event.Model
     , error : Maybe String
     }
 
@@ -38,14 +40,26 @@ init flags url key =
 
         ( homeModel, homeCmd ) =
             Pages.Home.init
+
+        ( eventModel, eventCmd ) =
+            case route of
+                Route.Event id ->
+                    Pages.Event.init id
+
+                _ ->
+                    Pages.Event.init ""
     in
     ( { key = key
       , url = url
       , route = route
       , home = homeModel
+      , event = eventModel
       , error = Nothing
       }
-    , Cmd.map HomeMsg homeCmd
+    , Cmd.batch
+        [ Cmd.map HomeMsg homeCmd
+        , Cmd.map EventMsg eventCmd
+        ]
     )
 
 
@@ -58,6 +72,7 @@ type Msg
     = LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
     | HomeMsg Pages.Home.Msg
+    | EventMsg Pages.Event.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -80,8 +95,31 @@ update msg model =
             let
                 ( newHome, cmd ) =
                     Pages.Home.update subMsg model.home
+
+                newError =
+                    case newHome.error of
+                        Just err ->
+                            Just err
+
+                        Nothing ->
+                            model.error
             in
-            ( { model | home = newHome, error = newHome.error }, Cmd.map HomeMsg cmd )
+            ( { model | home = newHome, error = newError }, Cmd.map HomeMsg cmd )
+
+        EventMsg subMsg ->
+            let
+                ( newEvent, cmd ) =
+                    Pages.Event.update subMsg model.event
+
+                newError =
+                    case newEvent.error of
+                        Just err ->
+                            Just err
+
+                        Nothing ->
+                            model.error
+            in
+            ( { model | event = newEvent, error = newError }, Cmd.map EventMsg cmd )
 
 
 view : Model -> Browser.Document Msg
@@ -91,6 +129,9 @@ view model =
             case model.route of
                 Route.Home ->
                     [ Html.map HomeMsg (Pages.Home.view model.home) ]
+
+                Route.Event id ->
+                    [ Html.map EventMsg (Pages.Event.view model.event) ]
 
                 _ ->
                     [ text "404 - not found" ]
@@ -103,6 +144,9 @@ view model =
 
                 Route.Admin ->
                     "Saavu.fi - Admin"
+
+                Route.Event id ->
+                    "Saavu.fi - " ++ id
 
                 _ ->
                     "Saavu.fi"
