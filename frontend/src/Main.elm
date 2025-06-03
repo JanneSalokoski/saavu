@@ -4,6 +4,7 @@ import Browser
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Pages.CreateEvent
 import Pages.Event
 import Pages.Home
 import Route
@@ -28,18 +29,21 @@ type alias Model =
     , route : Route.Route
     , home : Pages.Home.Model
     , event : Pages.Event.Model
+    , createEvent : Pages.CreateEvent.Model
     , error : Maybe String
     }
 
 
-init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init flags url key =
+initFromUrl : Url.Url -> Route.Route -> Nav.Key -> ( Model, Cmd Msg )
+initFromUrl url route key =
     let
-        route =
-            Route.fromUrl url
-
         ( homeModel, homeCmd ) =
-            Pages.Home.init
+            case route of
+                Route.Home ->
+                    Pages.Home.init
+
+                _ ->
+                    ( Pages.Home.noop, Cmd.none )
 
         ( eventModel, eventCmd ) =
             case route of
@@ -47,20 +51,39 @@ init flags url key =
                     Pages.Event.init id
 
                 _ ->
-                    Pages.Event.init ""
+                    ( Pages.Event.noop, Cmd.none )
+
+        ( createModel, createCmd ) =
+            case route of
+                Route.CreateEvent ->
+                    Pages.CreateEvent.init
+
+                _ ->
+                    ( Pages.CreateEvent.noop, Cmd.none )
     in
     ( { key = key
       , url = url
       , route = route
       , home = homeModel
       , event = eventModel
+      , createEvent = createModel
       , error = Nothing
       }
     , Cmd.batch
         [ Cmd.map HomeMsg homeCmd
         , Cmd.map EventMsg eventCmd
+        , Cmd.map CreateEventMsg createCmd
         ]
     )
+
+
+init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init _ url key =
+    let
+        route =
+            Route.fromUrl url
+    in
+    initFromUrl url route key
 
 
 subscriptions : Model -> Sub Msg
@@ -73,6 +96,7 @@ type Msg
     | UrlChanged Url.Url
     | HomeMsg Pages.Home.Msg
     | EventMsg Pages.Event.Msg
+    | CreateEventMsg Pages.CreateEvent.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -87,9 +111,14 @@ update msg model =
                     ( model, Nav.load href )
 
         UrlChanged url ->
-            ( { model | url = url }
-            , Cmd.none
-            )
+            let
+                route =
+                    Route.fromUrl url
+
+                ( newModel, newCmd ) =
+                    initFromUrl url route model.key
+            in
+            ( newModel, newCmd )
 
         HomeMsg subMsg ->
             let
@@ -121,6 +150,21 @@ update msg model =
             in
             ( { model | event = newEvent, error = newError }, Cmd.map EventMsg cmd )
 
+        CreateEventMsg subMsg ->
+            let
+                ( newCreateEvent, cmd ) =
+                    Pages.CreateEvent.update subMsg model.createEvent
+
+                newError =
+                    case newCreateEvent.error of
+                        Just err ->
+                            Just err
+
+                        Nothing ->
+                            model.error
+            in
+            ( { model | createEvent = newCreateEvent, error = newError }, Cmd.map CreateEventMsg cmd )
+
 
 view : Model -> Browser.Document Msg
 view model =
@@ -132,6 +176,9 @@ view model =
 
                 Route.Event id ->
                     [ Html.map EventMsg (Pages.Event.view model.event) ]
+
+                Route.CreateEvent ->
+                    [ Html.map CreateEventMsg (Pages.CreateEvent.view model.createEvent) ]
 
                 _ ->
                     [ text "404 - not found" ]
@@ -147,6 +194,9 @@ view model =
 
                 Route.Event id ->
                     "Saavu.fi - " ++ id
+
+                Route.CreateEvent ->
+                    "Saavu.fi - Create event"
 
                 _ ->
                     "Saavu.fi"
@@ -166,6 +216,10 @@ view model =
 
 viewErrorDialog : Maybe String -> Html Msg
 viewErrorDialog error =
+    let
+        _ =
+            Debug.log "error" error
+    in
     case error of
         Just err ->
             p [ style "color" "red" ] [ text err ]

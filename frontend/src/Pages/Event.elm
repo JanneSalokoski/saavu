@@ -1,4 +1,4 @@
-module Pages.Event exposing (Model, Msg, init, update, view)
+module Pages.Event exposing (Model, Msg, init, noop, update, view)
 
 import Event
 import Feature
@@ -6,36 +6,43 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Http
-import Json.Decode
+import Json.Decode as D
 
 
 type alias Model =
     { eventNameInput : String
     , event : Maybe Event.Event
-    , featureNameInput : String
-    , featureDescriptionInput : String
-    , features : List Feature.Feature
+    , features : List Feature.FeatureWithRelation
     , error : Maybe String
     }
 
 
+noop : Model
+noop =
+    { eventNameInput = ""
+    , event = Nothing
+    , features = []
+    , error = Nothing
+    }
+
+
 init : String -> ( Model, Cmd Msg )
-init id =
+init eventId =
     ( { eventNameInput = ""
-      , featureNameInput = ""
-      , featureDescriptionInput = ""
       , event = Nothing
       , features = []
       , error = Nothing
       }
     , Cmd.batch
-        [ fetchEvent id
+        [ fetchEvent eventId
+        , fetchFeatures eventId
         ]
     )
 
 
 type Msg
     = EventFetched (Result Http.Error Event.Event)
+    | FeaturesFetched (Result Http.Error (List Feature.FeatureWithRelation))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -45,7 +52,15 @@ update msg model =
             ( { model | event = Just event }, Cmd.none )
 
         EventFetched (Err e) ->
-            ( { model | event = Nothing, error = Just ("Fetch failed: " ++ Debug.toString e) }, Cmd.none )
+            ( { model | event = Nothing, error = Just ("[Event - Events] Fetch failed: " ++ Debug.toString e) }, Cmd.none )
+
+        FeaturesFetched (Ok features) ->
+            ( { model | features = features }, Cmd.none )
+
+        FeaturesFetched (Err e) ->
+            ( { model | event = Nothing, error = Just ("[Event - Features] Fetch failed: " ++ Debug.toString e) }
+            , Cmd.none
+            )
 
 
 fetchEvent : String -> Cmd Msg
@@ -57,10 +72,20 @@ fetchEvent id =
         }
 
 
+fetchFeatures : String -> Cmd Msg
+fetchFeatures eventId =
+    Http.get
+        { url = "/api/feature_relations/" ++ eventId
+        , expect =
+            Http.expectJson FeaturesFetched (D.list Feature.featureWithRelationDecoder)
+        }
+
+
 view : Model -> Html Msg
 view model =
     div []
         [ viewEvent model.event
+        , viewFeatures model.features
         ]
 
 
@@ -79,7 +104,7 @@ viewEvent event =
                 ]
 
 
-viewFeatures : List Feature.Feature -> Html Msg
+viewFeatures : List Feature.FeatureWithRelation -> Html Msg
 viewFeatures features =
     div [ class "features" ]
         [ h2 [] [ text "Features" ]
@@ -87,11 +112,11 @@ viewFeatures features =
         ]
 
 
-viewFeature : Feature.Feature -> Html Msg
+viewFeature : Feature.FeatureWithRelation -> Html Msg
 viewFeature feature =
     li []
-        [ div []
-            [ p [] [ text feature.name ]
-            , p [] [ text feature.description ]
+        [ ul [ class "Feature", classList [ ( "enabled", feature.enabled ) ] ]
+            [ li [] [ text feature.name ]
+            , li [] [ text feature.description ]
             ]
         ]

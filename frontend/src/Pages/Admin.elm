@@ -1,5 +1,7 @@
-module Pages.Home exposing (Model, Msg, init, noop, update, view)
+module Pages.Home exposing (..)
 
+import Browser
+import Browser.Navigation as Nav
 import Event
 import Feature
 import Html exposing (..)
@@ -7,6 +9,21 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as D
+import Json.Encode as E
+import Route
+import Url
+
+
+main : Program () Model Msg
+main =
+    Browser.application
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = subscriptions
+        , onUrlChange = UrlChanged
+        , onUrlRequest = LinkClicked
+        }
 
 
 type alias Model =
@@ -16,34 +33,34 @@ type alias Model =
     , featureDescriptionInput : String
     , features : List Feature.Feature
     , error : Maybe String
+    , key : Nav.Key
+    , url : Url.Url
+    , route : Route.Route
     }
 
 
-noop : Model
-noop =
-    { eventNameInput = ""
-    , events = []
-    , featureNameInput = ""
-    , featureDescriptionInput = ""
-    , features = []
-    , error = Nothing
-    }
-
-
-init : ( Model, Cmd Msg )
-init =
+init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init flags url key =
     ( { eventNameInput = ""
       , featureNameInput = ""
       , featureDescriptionInput = ""
       , events = []
       , features = []
       , error = Nothing
+      , key = key
+      , url = url
+      , route = Route.fromUrl url
       }
     , Cmd.batch
         [ fetchEvents
         , fetchFeatures
         ]
     )
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Sub.none
 
 
 type Msg
@@ -56,6 +73,8 @@ type Msg
     | EventCreated (Result Http.Error Event.Event)
     | FeaturesFetched (Result Http.Error (List Feature.Feature))
     | FeatureCreated (Result Http.Error Feature.Feature)
+    | LinkClicked Browser.UrlRequest
+    | UrlChanged Url.Url
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -106,7 +125,7 @@ update msg model =
             ( { model | events = evs }, Cmd.none )
 
         EventsFetched (Err e) ->
-            ( { model | error = Just ("[Home - Events] Fetch failed: " ++ Debug.toString e) }, Cmd.none )
+            ( { model | error = Just ("Fetch failed: " ++ Debug.toString e) }, Cmd.none )
 
         FeatureCreated (Ok feature) ->
             ( { model | features = feature :: model.features, featureNameInput = "" }, Cmd.none )
@@ -118,14 +137,27 @@ update msg model =
             ( { model | features = features }, Cmd.none )
 
         FeaturesFetched (Err e) ->
-            ( { model | error = Just ("[Home - Features] Fetch failed: " ++ Debug.toString e) }, Cmd.none )
+            ( { model | error = Just ("Fetch failed: " ++ Debug.toString e) }, Cmd.none )
+
+        LinkClicked urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl model.key (Url.toString url) )
+
+                Browser.External href ->
+                    ( model, Nav.load href )
+
+        UrlChanged url ->
+            ( { model | url = url }
+            , Cmd.none
+            )
 
 
 fetchEvents : Cmd Msg
 fetchEvents =
     Http.get
         { url = "/api/events/"
-        , expect = Http.expectJson EventsFetched (D.list Event.eventDecoder)
+        , expect = Http.expectJson EventsFetched (Decode.list Event.eventDecoder)
         }
 
 
@@ -133,18 +165,28 @@ fetchFeatures : Cmd Msg
 fetchFeatures =
     Http.get
         { url = "/api/features/"
-        , expect = Http.expectJson FeaturesFetched (D.list Feature.featureDecoder)
+        , expect = Http.expectJson FeaturesFetched (Decode.list Feature.featureDecoder)
         }
 
 
-view : Model -> Html Msg
+view : Model -> Browser.Document Msg
 view model =
-    div []
-        [ viewEvents model.events
-        , viewCreateEvent model.eventNameInput
-        , viewFeatures model.features
-        , viewCreateFeature model.featureNameInput model.featureDescriptionInput
+    let
+        _ =
+            Debug.log "route" model.route
+    in
+    { title = "Saavu.fi"
+    , body =
+        [ div []
+            [ p [] [ text (Url.toString model.url) ]
+            , viewEvents model.events
+            , viewCreateEvent model.eventNameInput
+            , viewFeatures model.features
+            , viewCreateFeature model.featureNameInput model.featureDescriptionInput
+            , viewErrorDialog model.error
+            ]
         ]
+    }
 
 
 viewEvents : List Event.Event -> Html Msg
@@ -157,7 +199,7 @@ viewEvents events =
 
 viewEvent : Event.Event -> Html Msg
 viewEvent event =
-    li [] [ a [ href ("/event/" ++ event.id) ] [ text ("[" ++ event.id ++ "] " ++ event.name) ] ]
+    li [] [ text ("[" ++ event.id ++ "] " ++ event.name) ]
 
 
 viewCreateEvent : String -> Html Msg
@@ -179,9 +221,9 @@ viewFeatures features =
 viewFeature : Feature.Feature -> Html Msg
 viewFeature feature =
     li []
-        [ ul []
-            [ li [] [ text feature.name ]
-            , li [] [ text feature.description ]
+        [ div []
+            [ p [] [ text feature.name ]
+            , p [] [ text feature.description ]
             ]
         ]
 
@@ -193,3 +235,13 @@ viewCreateFeature featureName featureDescription =
         , textarea [ placeholder "Description", value featureDescription, onInput UpdateFeatureDescription ] []
         , button [ onClick SubmitFeature ] [ text "Create a feature" ]
         ]
+
+
+viewErrorDialog : Maybe String -> Html Msg
+viewErrorDialog error =
+    case error of
+        Just err ->
+            div [ style "color" "red" ] [ text err ]
+
+        Nothing ->
+            text ""
