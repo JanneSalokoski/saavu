@@ -16,3 +16,12 @@ textarea {
 .create.feature>* {
     display: block;
 }
+
+.Feature {
+    background-color: red;
+}
+
+.Feature.enabled,
+.Feature:has(.selected:checked) {
+    background-color: green;
+}
