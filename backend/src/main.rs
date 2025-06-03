@@ -2,10 +2,11 @@ use axum::{
     Json, Router,
     extract::{Path, State},
     http::StatusCode,
-    routing::get,
+    routing::{get, post},
 };
 use dotenvy::dotenv;
 use serde::{Deserialize, Serialize};
+use sqlx::QueryBuilder;
 use sqlx::{Pool, Row, Sqlite, sqlite::SqlitePoolOptions};
 use std::env;
 use tokio;
@@ -39,9 +40,29 @@ struct Feature {
 }
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+struct FeatureWithRelation {
+    id: String,
+    name: String,
+    description: String,
+    enabled: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 struct CreateFeature {
     name: String,
     description: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+struct Relation {
+    feature_id: String,
+    event_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+struct CreateFeatureRelation {
+    feature_id: String,
+    event_id: String,
 }
 
 fn ensure_db_file_exists(db_url: &str) {
@@ -85,15 +106,21 @@ async fn main() {
 
     let app = Router::new()
         .route(
-            "/api/events",
+            "/api/events/",
             get(get_events).post(create_event).put(update_event),
         )
         .route("/api/events/{id}", get(get_event))
         .route(
-            "/api/features",
+            "/api/features/",
             get(get_features).post(create_feature).put(update_feature),
         )
         .route("/api/features/{id}", get(get_feature))
+        .route("/api/feature_relations/", post(create_feature_relations))
+        .route(
+            "/api/feature_relations/{id}",
+            get(get_features_with_relations),
+        )
+        .route("/api/relations/", get(get_relations))
         .nest_service("/app", ServeDir::new("../static"))
         .with_state(state)
         .layer(TraceLayer::new_for_http());
@@ -227,4 +254,52 @@ async fn update_feature(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+async fn get_features_with_relations(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<Json<Vec<FeatureWithRelation>>, StatusCode> {
+    let rows =
+        sqlx::query_as::<_, FeatureWithRelation>("SELECT f.*, EXISTS ( SELECT 1 FROM feature_relations r WHERE r.feature_id = f.id AND r.event_id = ?) AS enabled FROM features f")
+            .bind(&id)
+            .fetch_all(&state.db)
+            .await
+            .map_err(|e| {
+                eprintln!("DB error: {:?}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+
+    Ok(Json(rows))
+}
+
+async fn create_feature_relations(
+    State(state): State<AppState>,
+    Json(data): Json<Vec<CreateFeatureRelation>>,
+) -> Result<StatusCode, StatusCode> {
+    let mut builder = QueryBuilder::new("INSERT INTO feature_relations (feature_id, event_id) ");
+
+    builder.push_values(&data, |mut b, feature| {
+        b.push_bind(&feature.feature_id)
+            .push_bind(&feature.event_id);
+    });
+
+    _ = builder.build().execute(&state.db).await.map_err(|e| {
+        eprintln!("DB error: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn get_relations(State(state): State<AppState>) -> Result<Json<Vec<Relation>>, StatusCode> {
+    let rows = sqlx::query_as::<_, Relation>("SELECT * FROM feature_relations")
+        .fetch_all(&state.db)
+        .await
+        .map_err(|e| {
+            eprintln!("DB error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    Ok(Json(rows))
 }
