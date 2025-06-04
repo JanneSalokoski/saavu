@@ -234,15 +234,45 @@ view model =
     in
     { title = title
     , body =
-        div [ class "App" ]
-            [ div [ class "Status" ]
-                [ p [] [ text ("url: " ++ Url.toString model.url) ]
-                , viewErrorDialog model.error
-                , h1 [] [ text title ]
-                ]
-            ]
-            :: body
+        viewPage model body title
+
+    -- div [ class "App" ]
+    --     [ div [ class "Status" ]
+    --         [ p [] [ text ("url: " ++ Url.toString model.url) ]
+    --         , viewErrorDialog model.error
+    --         , h1 [] [ text title ]
+    --         ]
+    --     ]
+    --     :: body
     }
+
+
+viewPage : Model -> List (Html Msg) -> String -> List (Html Msg)
+viewPage model body title =
+    div [ class "App" ]
+        [ viewHeader model title ]
+        :: body
+        ++ [ viewFooter model ]
+
+
+viewHeader : Model -> String -> Html Msg
+viewHeader model title =
+    div [ class "Header" ]
+        [ viewErrorDialog model.error
+        , h1 [] [ text title ]
+        ]
+
+
+viewBody : List (Html Msg) -> Html Msg
+viewBody body =
+    div [] body
+
+
+viewFooter : Model -> Html Msg
+viewFooter model =
+    div [ class "Footer" ]
+        [ span [] [ text "Saavu.fi © Janne Salokoski, 2025" ]
+        ]
 
 
 viewErrorDialog : Maybe String -> Html Msg
