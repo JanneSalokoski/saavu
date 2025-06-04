@@ -106,9 +106,9 @@ viewEvent event =
 
 viewFeatures : List Feature.FeatureWithRelation -> Html Msg
 viewFeatures features =
-    div [ class "features" ]
+    div [ class "Features" ]
         [ h2 [] [ text "Features" ]
-        , ul [] (List.map viewFeature (List.sortBy .name features))
+        , ul [ class "feature-grid" ] (List.map viewFeature (List.sortBy .name features))
         ]
 
 

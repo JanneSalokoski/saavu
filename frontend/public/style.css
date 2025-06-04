@@ -1,8 +1,32 @@
+:root {
+    --color-green: #B5BD89;
+    --color-red: #EC9192;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+}
+
+ul {
+    list-style-type: none;
+}
+
+h2 {
+    margin-top: 1em;
+}
+
 body {
     font-family: sans-serif;
-    padding: 2rem;
     max-width: 600px;
     margin: auto;
+
+    display: grid;
+    gap: 1em;
+
+    height: 100vh;
+
+    grid-template-rows: auto 1fr auto;
 }
 
 input,
@@ -17,17 +41,46 @@ textarea {
     display: block;
 }
 
+.feature-grid {
+    display: grid;
+    list-style-type: none;
+
+    gap: 0.5em;
+
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.feature-grid li {
+    list-style: none;
+    /* padding: 0.5em; */
+    margin: 0;
+}
+
 .Feature {
-    background-color: red;
+    background-color: var(--color-red);
+    padding: 0.5em;
+
+    border-radius: 2px;
 }
 
 .Feature.enabled,
 .Feature:has(.selected:checked) {
-    background-color: green;
+    background-color: var(--color-green);
+}
+
+.Feature li:not(:first-child) {
+    font-size: 0.8em;
 }
 
 .Footer {
     text-align: center;
-    margin-top: 4em;
     font-size: 0.8em;
+}
+
+.Header {
+    padding-top: 3em;
+}
+
+.Footer {
+    padding-bottom: 1em;
 }
