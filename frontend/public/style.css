@@ -4,16 +4,16 @@
     --color-darkgreen: #192422;
 
     --color-red: #693337;
-    --color-lightred: #b2978e;
-    --color-darkred: #24191d;
+    --color-lightred: #daceca;
+    --color-darkred: #3b2426;
 
     --color-00: #131212;
-    --color-01: #553739;
-    --color-02: #955e42;
-    --color-03: #8a95a5;
-    --color-04: #e6e8e6;
+    --color-01: #24191d;
+    --color-02: #3b2426;
+    --color-03: #693337;
+    --color-04: #daceca;
 
-    --color-bg: var(--color-00);
+    --color-bg: var(--color-01);
     --color-fg: var(--color-04);
 }
 
