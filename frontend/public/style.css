@@ -25,3 +25,9 @@ textarea {
 .Feature:has(.selected:checked) {
     background-color: green;
 }
+
+.Footer {
+    text-align: center;
+    margin-top: 4em;
+    font-size: 0.8em;
+}
