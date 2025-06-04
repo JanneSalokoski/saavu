@@ -6,9 +6,9 @@ import Url.Parser as Parser exposing ((</>))
 
 type Route
     = Home
-    | Admin
     | Event String
     | CreateEvent
+    | Admin
     | NotFound
 
 

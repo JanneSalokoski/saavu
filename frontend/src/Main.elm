@@ -4,6 +4,7 @@ import Browser
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Pages.Admin
 import Pages.CreateEvent
 import Pages.Event
 import Pages.Home
@@ -30,6 +31,7 @@ type alias Model =
     , home : Pages.Home.Model
     , event : Pages.Event.Model
     , createEvent : Pages.CreateEvent.Model
+    , admin : Pages.Admin.Model
     , error : Maybe String
     }
 
@@ -60,6 +62,14 @@ initFromUrl url route key =
 
                 _ ->
                     ( Pages.CreateEvent.noop, Cmd.none )
+
+        ( adminModel, adminCmd ) =
+            case route of
+                Route.Admin ->
+                    Pages.Admin.init
+
+                _ ->
+                    ( Pages.Admin.noop, Cmd.none )
     in
     ( { key = key
       , url = url
@@ -67,12 +77,14 @@ initFromUrl url route key =
       , home = homeModel
       , event = eventModel
       , createEvent = createModel
+      , admin = adminModel
       , error = Nothing
       }
     , Cmd.batch
         [ Cmd.map HomeMsg homeCmd
         , Cmd.map EventMsg eventCmd
         , Cmd.map CreateEventMsg createCmd
+        , Cmd.map AdminMsg adminCmd
         ]
     )
 
@@ -97,6 +109,7 @@ type Msg
     | HomeMsg Pages.Home.Msg
     | EventMsg Pages.Event.Msg
     | CreateEventMsg Pages.CreateEvent.Msg
+    | AdminMsg Pages.Admin.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -165,6 +178,21 @@ update msg model =
             in
             ( { model | createEvent = newCreateEvent, error = newError }, Cmd.map CreateEventMsg cmd )
 
+        AdminMsg subMsg ->
+            let
+                ( newAdmin, cmd ) =
+                    Pages.Admin.update subMsg model.admin
+
+                newError =
+                    case newAdmin.error of
+                        Just err ->
+                            Just err
+
+                        Nothing ->
+                            model.error
+            in
+            ( { model | admin = newAdmin, error = newError }, Cmd.map AdminMsg cmd )
+
 
 view : Model -> Browser.Document Msg
 view model =
@@ -180,6 +208,9 @@ view model =
                 Route.CreateEvent ->
                     [ Html.map CreateEventMsg (Pages.CreateEvent.view model.createEvent) ]
 
+                Route.Admin ->
+                    [ Html.map AdminMsg (Pages.Admin.view model.admin) ]
+
                 _ ->
                     [ text "404 - not found" ]
 
@@ -189,14 +220,14 @@ view model =
                 Route.Home ->
                     "Saavu.fi"
 
-                Route.Admin ->
-                    "Saavu.fi - Admin"
-
                 Route.Event id ->
                     "Saavu.fi - " ++ id
 
                 Route.CreateEvent ->
                     "Saavu.fi - Create event"
+
+                Route.Admin ->
+                    "Saavu.fi - Admin"
 
                 _ ->
                     "Saavu.fi"
