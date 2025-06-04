@@ -95,6 +95,14 @@ button:active {
     background-color: var(--color-01);
 }
 
+a {
+    color: inherit;
+}
+
+a:visited {
+    color: var(--color-03);
+}
+
 .create.feature>* {
     display: block;
 }
