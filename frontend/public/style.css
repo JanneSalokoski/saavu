@@ -49,10 +49,50 @@ body {
 
 input,
 button,
+select,
 textarea {
-    margin-top: 1rem;
-    padding: 0.5rem;
+    font-family: inherit;
     font-size: 1rem;
+
+    color: inherit;
+    background-color: var(--color-00);
+
+    border: 2px solid var(--color-02);
+    border-radius: 4px;
+
+    padding: 0.5rem;
+    margin: 0.5rem;
+
+    box-sizing: border-box;
+    outline: none;
+    transition: 0.1s;
+}
+
+input:hover,
+select:hover,
+textarea:hover {
+    transition: 0.1s;
+    background-color: var(--color-01);
+}
+
+input:active,
+select:active,
+textarea:active {
+    transition: 0.5s;
+    background-color: var(--color-02);
+}
+
+button {
+    background-color: var(--color-03);
+    border-color: var(--color-02);
+}
+
+button:hover {
+    background-color: var(--color-02);
+}
+
+button:active {
+    background-color: var(--color-01);
 }
 
 .create.feature>* {
