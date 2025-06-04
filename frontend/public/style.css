@@ -14,6 +14,7 @@ ul {
 
 h2 {
     margin-top: 1em;
+    margin-bottom: 0.5em;
 }
 
 body {
@@ -42,12 +43,13 @@ textarea {
 }
 
 .feature-grid {
-    display: grid;
     list-style-type: none;
 
-    gap: 0.5em;
-
+    display: grid;
     grid-template-columns: repeat(3, 1fr);
+    align-items: strecth;
+
+    gap: 0.5em;
 }
 
 .feature-grid li {
@@ -58,7 +60,10 @@ textarea {
 
 .Feature {
     background-color: var(--color-red);
+    color: #aaa;
     padding: 0.5em;
+
+    height: 8em;
 
     border-radius: 2px;
 }
@@ -66,15 +71,18 @@ textarea {
 .Feature.enabled,
 .Feature:has(.selected:checked) {
     background-color: var(--color-green);
+    color: #fff;
 }
 
 .Feature li:not(:first-child) {
+    margin-top: 1em;
     font-size: 0.8em;
 }
 
 .Footer {
     text-align: center;
     font-size: 0.8em;
+
 }
 
 .Header {
