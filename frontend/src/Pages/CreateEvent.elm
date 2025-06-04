@@ -4,7 +4,7 @@ import Event
 import Feature
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onInput)
+import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
 import Json.Decode as D
 import Relation
@@ -151,7 +151,7 @@ view : Model -> Html Msg
 view model =
     div []
         [ viewCreateEvent model.eventNameInput
-        , viewFeatures model.features
+        , viewFeatures model.features model.selected
 
         -- , viewSelected model.selected
         ]
@@ -159,33 +159,30 @@ view model =
 
 viewCreateEvent : String -> Html Msg
 viewCreateEvent eventName =
-    div []
-        [ input [ placeholder "Event name", value eventName, onInput UpdateEventName ] []
-        , button [ onClick SubmitEvent ] [ text "Create an event" ]
+    Html.form [ class "CreateEvent", onSubmit SubmitEvent ]
+        [ input [ class "name", placeholder "Event name", value eventName, onInput UpdateEventName ] []
+        , button [ class "submit", type_ "submit" ] [ text "Create an event" ]
         ]
 
 
-viewFeatures : List Feature.Feature -> Html Msg
-viewFeatures features =
-    div [ class "features" ]
+viewFeatures : List Feature.Feature -> List String -> Html Msg
+viewFeatures features selected =
+    div [ class "Features" ]
         [ h2 [] [ text "Features" ]
-        , ul [] (List.map viewFeature (List.sortBy .name features))
+        , ul [ class "feature-grid" ] (List.map (viewFeature selected) (List.sortBy .name features))
         ]
 
 
-viewFeature : Feature.Feature -> Html Msg
-viewFeature feature =
+viewFeature : List String -> Feature.Feature -> Html Msg
+viewFeature selected feature =
     let
-        idstr =
-            String.slice -8 -1 feature.id
+        isSelected =
+            List.any (\a -> a == feature.id) selected
     in
-    li [ class "Feature" ]
-        [ label [] [ text "Selected: " ]
-        , input [ type_ "checkbox", class "selected", onClick (ToggleSelected feature.id) ] []
-        , ul []
-            [ li [] [ text ("id: [" ++ idstr ++ "]") ]
-            , li [] [ text ("name: " ++ feature.name) ]
-            , li [] [ text ("description: " ++ feature.description) ]
+    li [ class "Feature", tabindex 1, attribute "role" "button", style "cursor" "pointer", onClick (ToggleSelected feature.id), classList [ ( "enabled", isSelected ) ] ]
+        [ ul []
+            [ li [ class "name" ] [ text feature.name ]
+            , li [ class "description" ] [ text feature.description ]
             ]
         ]
 
